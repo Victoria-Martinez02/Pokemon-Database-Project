@@ -1,0 +1,155 @@
+/* 
+	Query 1: A select statement with that includes at least two aggregate functions
+	Wriiten by: Cody Mangold
+*/
+
+use POKEMON_DB;
+SELECT TYPINGS.TYPE_NAME AS "Type", CATEGORY.CATEGORY_NAME AS "Category",
+ COUNT(*) as "Move Total", AVG(MOVE.MOVE_PWR) as "Move Power Average"
+FROM TYPINGS
+JOIN  MOVE ON TYPINGS.TYPE_ID = MOVE.TYPE_ID
+JOIN CATEGORY ON MOVE.CATEGORY_ID = CATEGORY.CATEGORY_ID
+WHERE CATEGORY.CATEGORY_ID != 2
+GROUP BY TYPINGS.TYPE_NAME, CATEGORY.CATEGORY_NAME
+ORDER BY AVG(MOVE.MOVE_PWR) DESC;
+
+
+/*
+	Query 2: A select statement that uses at least one join, concatenation, and distinct clause
+	Written by: Victoria Martinez
+*/
+
+SELECT DISTINCT 
+	pokemon.TRAINER_ID AS "Trainer ID"
+    ,TRAINER_NAME AS "Trainer Name"
+    ,pokemon.SPECIES_NUM AS "Pokedex No."
+    ,pokemon.FORM_ID AS "Form ID",
+    CONCAT(SPECIES_NAME, COALESCE(CONCAT(" (",FORM_NAME,")"), '')) AS "Pokemon Name"
+FROM pokemon
+JOIN trainer ON pokemon.TRAINER_ID = trainer.TRAINER_ID
+JOIN p_species ON pokemon.SPECIES_NUM = p_species.SPECIES_NUM
+JOIN form ON pokemon.FORM_ID = form.FORM_ID AND pokemon.SPECIES_NUM = form.SPECIES_NUM
+ORDER BY 5,2;
+
+/*
+	Query 3: A select statement that includes at least one subquery
+	Written by: Cody Mangold
+*/
+
+USE pokemon_db;
+SELECT SPECIES_NAME AS "Pokemon Species", 
+coalesce(FORM.FORM_NAME, "Base Form") AS "Form"
+FROM P_species
+JOIN FORM ON P_SPECIES.SPECIES_NUM = FORM.SPECIES_NUM
+Where (P_SPECIES.SPECIES_NUM,FORM.FORM_ID ) IN (
+SELECT P_TYPE.SPECIES_NUM, FORM.FORM_ID
+FROM P_TYPE
+JOIN TYPINGS ON P_TYPE.TYPE_ID = TYPINGS.TYPE_ID
+JOIN FORM ON P_TYPE.SPECIES_NUM = FORM.SPECIES_NUM AND P_TYPE.FORM_ID = FORM.FORM_ID
+WHERE TYPINGS.TYPE_NAME = 'FIRE'
+);
+
+/*
+	Query 4: A select statement that uses an order by clause
+	Written by: Victoria Martinez
+*/
+
+SELECT 
+	move.MOVE_ID AS "Move ID"
+    ,MOVE_NAME AS "Move Name"
+    ,TYPE_NAME AS "Type"
+    ,CATEGORY_NAME AS "Category"
+    ,MOVE_PWR AS "Power"
+    ,MOVE_ACC AS "Accuracy"
+    ,MOVE_PP AS "PP"
+    ,MOVE_EFFECT AS "Effect Description"
+    ,MOVE_EF_PROB AS "Effect Probability"
+FROM move
+JOIN category ON move.CATEGORY_ID = category.CATEGORY_ID
+JOIN typings ON move.TYPE_ID = typings.TYPE_ID
+ORDER BY 3, 4, 5 DESC, 2;
+
+/*
+	Query 5: An insert statement that runs a trigger in which the trigger adds data or updates data in a table
+	Written by: Mickey Clarke
+*/
+
+DELIMITER //
+
+CREATE TRIGGER add_new_trainer
+AFTER INSERT ON trainer
+FOR EACH ROW
+BEGIN
+    INSERT INTO pokemon(TRAINER_ID, SPECIES_NUM, FORM_ID, NATURE_ID, POKEMON_SHINY)
+    VALUES (NEW.TRAINER_ID, 151, 0, 15, 1);
+    INSERT INTO iv(POKE_ID, IV_HP, IV_ATK, IV_DEF, IV_SPATK, IV_SPDEF, IV_SPD)
+    SELECT POKE_ID, 31, 31, 31, 31, 31, 31
+    FROM pokemon
+    WHERE TRAINER_ID = NEW.TRAINER_ID
+    ORDER BY POKE_ID DESC
+    LIMIT 1;
+    INSERT INTO ev(POKE_ID, EV_HP, EV_ATK, EV_DEF, EV_SPATK, EV_SPDEF, EV_SPD)
+    SELECT POKE_ID, 4, 0, 0, 252, 0, 252
+    FROM pokemon
+    WHERE TRAINER_ID = NEW.TRAINER_ID
+    ORDER BY POKE_ID DESC
+    LIMIT 1;
+END;
+
+//
+DELIMITER ;
+
+INSERT INTO trainer (TRAINER_ID, TRAINER_NAME)
+VALUES (123, 'Ash Ketchum');
+
+SELECT * FROM pokemon WHERE TRAINER_ID = 123;
+
+
+/*
+	Query 6: A delete statement that runs a trigger in which the trigger deletes data in one table.
+	Written by: Mickey Clarke
+*/
+DELIMITER //
+CREATE TRIGGER DeleteTrainer
+BEFORE DELETE ON trainer
+FOR EACH ROW
+BEGIN
+    DELETE FROM pokemon WHERE TRAINER_ID = OLD.TRAINER_ID;
+END;
+//
+DELIMITER ;
+
+DELETE FROM Trainer WHERE TRAINER_ID = 123;
+SELECT * FROM pokemon WHERE TRAINER_ID = 123;
+
+/*
+	Query 7:
+	#This Query will return all of the pokemon of the "Aerodactyl" Species in the order of Highest to Lowest Speed Intrinsic Value
+	#This Query will also show all who these pokemon's trainers are as well as their Pokemon_ID
+	Written by: Jacob Allegretti
+*/
+
+Select Trainer_Name, Pokemon.Poke_ID, Species_Name, IV_SPD, EV_SPD 
+From Pokemon
+Join Trainer on Pokemon.Trainer_ID=Trainer.Trainer_ID
+Join P_Species on Pokemon.Species_Num=P_Species.Species_Num
+Join IV on Pokemon.Poke_ID = IV.Poke_ID
+Join EV on Pokemon.Poke_ID = EV.Poke_ID
+Where(Species_Name = 'Aerodactyl')
+Order By IV_SPD desc;
+
+/*
+	Query 8:
+	#This Query Shows all existing pokemon in our database that belong to the "Field" egg group
+	#As well as their ID and what Species they are, Sorting Alphabetically by Species Name
+	#This is useful as pokemon can only breed with other pokemon that share an egg group
+	Written by: Jacob Allegretti
+*/
+
+Select Pokemon.Poke_ID, Species_Name, Group_Name
+From Pokemon
+Join P_Species on Pokemon.Species_Num=P_Species.Species_Num
+Join P_Egg on Pokemon.Species_Num=P_Egg.Species_Num
+Join Egg_Group on P_Egg.Group_ID=Egg_Group.Group_ID
+Where(Group_Name = 'Field')
+Order by Species_Name Asc;
